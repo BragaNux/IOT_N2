@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "author": "Brayan Martins · Mell Campos",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-dht22", "id": "dht1", "top": -124.5, "left": -140, "attrs": { "temperature": "37.5", "humidity": "52" } },
+    { "type": "wokwi-relay-module", "id": "rele", "top": -150, "left": 140, "attrs": {} },
+    { "type": "wokwi-led", "id": "lampada", "top": -230, "left": 330, "attrs": { "color": "orange", "label": "aquecedor" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": -170, "left": 330, "rotate": 90, "attrs": { "value": "220" } },
+    { "type": "wokwi-servo", "id": "servo", "top": 120, "left": 160, "attrs": {} },
+    { "type": "wokwi-buzzer", "id": "bz1", "top": -112.8, "left": -270, "attrs": { "volume": "0.1" } },
+    { "type": "wokwi-led", "id": "led1", "top": 150, "left": -200, "attrs": { "color": "red", "label": "alarme" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 205, "left": -150, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+
+    [ "dht1:VCC", "esp:3V3", "red", [] ],
+    [ "dht1:GND", "esp:GND.1", "black", [] ],
+    [ "dht1:SDA", "esp:15", "green", [] ],
+
+    [ "rele:VCC", "esp:5V", "red", [] ],
+    [ "rele:GND", "esp:GND.2", "black", [] ],
+    [ "rele:IN", "esp:26", "blue", [] ],
+    [ "rele:COM", "esp:3V3", "red", [] ],
+    [ "rele:NO", "r2:1", "orange", [] ],
+    [ "r2:2", "lampada:A", "orange", [] ],
+    [ "lampada:C", "esp:GND.2", "black", [] ],
+
+    [ "servo:V+", "esp:5V", "red", [] ],
+    [ "servo:GND", "esp:GND.3", "black", [] ],
+    [ "servo:PWM", "esp:13", "violet", [] ],
+
+    [ "bz1:1", "esp:GND.1", "black", [] ],
+    [ "bz1:2", "esp:23", "orange", [] ],
+
+    [ "led1:C", "esp:GND.1", "black", [] ],
+    [ "led1:A", "r1:1", "red", [] ],
+    [ "r1:2", "esp:4", "red", [] ]
+  ],
+  "dependencies": {}
+}
