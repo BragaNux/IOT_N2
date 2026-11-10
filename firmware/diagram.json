@@ -3,42 +3,272 @@
   "author": "Brayan Martins · Mell Campos",
   "editor": "wokwi",
   "parts": [
-    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
-    { "type": "wokwi-dht22", "id": "dht1", "top": -124.5, "left": -140, "attrs": { "temperature": "37.5", "humidity": "52" } },
-    { "type": "wokwi-relay-module", "id": "rele", "top": -150, "left": 140, "attrs": {} },
-    { "type": "wokwi-led", "id": "lampada", "top": -230, "left": 330, "attrs": { "color": "orange", "label": "aquecedor" } },
-    { "type": "wokwi-resistor", "id": "r2", "top": -170, "left": 330, "rotate": 90, "attrs": { "value": "220" } },
-    { "type": "wokwi-servo", "id": "servo", "top": 120, "left": 160, "attrs": {} },
-    { "type": "wokwi-buzzer", "id": "bz1", "top": -112.8, "left": -270, "attrs": { "volume": "0.1" } },
-    { "type": "wokwi-led", "id": "led1", "top": 150, "left": -200, "attrs": { "color": "red", "label": "alarme" } },
-    { "type": "wokwi-resistor", "id": "r1", "top": 205, "left": -150, "attrs": { "value": "220" } }
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "bz1",
+      "top": -50,
+      "left": 160,
+      "rotate": 90,
+      "attrs": {
+        "volume": "0.1"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 138.35,
+      "left": 172.8,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": 73.2,
+      "left": 234.6,
+      "attrs": {
+        "color": "red",
+        "label": "alarme",
+        "flip": ""
+      }
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht1",
+      "top": 170,
+      "left": 200,
+      "attrs": {
+        "temperature": "37.5",
+        "humidity": "52"
+      }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "rele",
+      "top": 105.8,
+      "left": -230.4,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "lampada",
+      "top": -42,
+      "left": -303,
+      "attrs": {
+        "color": "orange",
+        "label": "aquecedor",
+        "flip": "1"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 91.2,
+      "left": -365.35,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo",
+      "top": 240,
+      "left": -250,
+      "attrs": {}
+    }
   ],
   "connections": [
-    [ "esp:TX", "$serialMonitor:RX", "", [] ],
-    [ "esp:RX", "$serialMonitor:TX", "", [] ],
-
-    [ "dht1:VCC", "esp:3V3", "red", [] ],
-    [ "dht1:GND", "esp:GND.1", "black", [] ],
-    [ "dht1:SDA", "esp:15", "green", [] ],
-
-    [ "rele:VCC", "esp:5V", "red", [] ],
-    [ "rele:GND", "esp:GND.2", "black", [] ],
-    [ "rele:IN", "esp:26", "blue", [] ],
-    [ "rele:COM", "esp:3V3", "red", [] ],
-    [ "rele:NO", "r2:1", "orange", [] ],
-    [ "r2:2", "lampada:A", "orange", [] ],
-    [ "lampada:C", "esp:GND.2", "black", [] ],
-
-    [ "servo:V+", "esp:5V", "red", [] ],
-    [ "servo:GND", "esp:GND.3", "black", [] ],
-    [ "servo:PWM", "esp:13", "violet", [] ],
-
-    [ "bz1:1", "esp:GND.1", "black", [] ],
-    [ "bz1:2", "esp:23", "orange", [] ],
-
-    [ "led1:C", "esp:GND.1", "black", [] ],
-    [ "led1:A", "r1:1", "red", [] ],
-    [ "r1:2", "esp:4", "red", [] ]
+    [
+      "esp:TX",
+      "$serialMonitor:RX",
+      "",
+      []
+    ],
+    [
+      "esp:RX",
+      "$serialMonitor:TX",
+      "",
+      []
+    ],
+    [
+      "bz1:1",
+      "esp:GND.2",
+      "black",
+      []
+    ],
+    [
+      "bz1:2",
+      "esp:23",
+      "orange",
+      [
+        "h-30.7",
+        "v46.9"
+      ]
+    ],
+    [
+      "r1:1",
+      "esp:4",
+      "red",
+      []
+    ],
+    [
+      "r1:2",
+      "led1:A",
+      "red",
+      [
+        "h75.6",
+        "v-28.8"
+      ]
+    ],
+    [
+      "led1:C",
+      "esp:GND.3",
+      "black",
+      [
+        "h-96",
+        "v-28.8"
+      ]
+    ],
+    [
+      "dht1:SDA",
+      "esp:15",
+      "green",
+      [
+        "v31.9",
+        "h-109.3",
+        "v-144"
+      ]
+    ],
+    [
+      "dht1:VCC",
+      "esp:3V3",
+      "red",
+      [
+        "v22.3",
+        "h-234.2",
+        "v-278.4"
+      ]
+    ],
+    [
+      "dht1:GND",
+      "esp:GND.3",
+      "black",
+      [
+        "v41.5",
+        "h-119",
+        "v-240"
+      ]
+    ],
+    [
+      "rele:IN",
+      "esp:26",
+      "blue",
+      [
+        "v28.6",
+        "h192",
+        "v-57.6"
+      ]
+    ],
+    [
+      "rele:VCC",
+      "esp:5V",
+      "red",
+      [
+        "v-57.6",
+        "h163.2",
+        "v134.4"
+      ]
+    ],
+    [
+      "rele:GND",
+      "esp:GND.1",
+      "black",
+      [
+        "h-9.6",
+        "v-48.4",
+        "h182.4",
+        "v67.2"
+      ]
+    ],
+    [
+      "rele:COM",
+      "esp:3V3",
+      "red",
+      [
+        "v-126.2",
+        "h121.01"
+      ]
+    ],
+    [
+      "rele:NO",
+      "r2:2",
+      "orange",
+      [
+        "v46.2",
+        "h-219.6"
+      ]
+    ],
+    [
+      "r2:1",
+      "lampada:A",
+      "orange",
+      [
+        "v-67.2",
+        "h48"
+      ]
+    ],
+    [
+      "lampada:C",
+      "esp:GND.1",
+      "black",
+      [
+        "h230",
+        "v153.6",
+        "h52.61"
+      ]
+    ],
+    [
+      "servo:PWM",
+      "esp:13",
+      "violet",
+      [
+        "v17.4",
+        "h240.4",
+        "v-163.2"
+      ]
+    ],
+    [
+      "servo:V+",
+      "esp:5V",
+      "red",
+      [
+        "h-28.4",
+        "v36.5",
+        "h211.2",
+        "v-124.8",
+        "h71.81"
+      ]
+    ],
+    [
+      "servo:GND",
+      "esp:GND.1",
+      "black",
+      [
+        "h-18.8",
+        "v-69.2",
+        "h211.2",
+        "v-67.2"
+      ]
+    ]
   ],
   "dependencies": {}
 }
