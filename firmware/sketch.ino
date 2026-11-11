@@ -606,6 +606,12 @@ void setup() {
   pinMode(PIN_BUZZER, OUTPUT);
   Serial.begin(115200);
 
+  setenv("TZ", "<-03>3", 1);   // fuso de Brasília desde o boot (o relógio sobrevive a um reset)
+  tzset();
+  // O handshake TLS (MQTT/HTTPS) é demorado e roda no núcleo 0; sem isso o watchdog do
+  // IDLE0 reinicia o ESP32 no meio do handshake. O controle segue no núcleo 1.
+  disableCore0WDT();
+
   mtx = xSemaphoreCreateMutex();
   filaComandos = xQueueCreate(8, sizeof(Comando));
   filaAcks     = xQueueCreate(8, sizeof(Ack));
