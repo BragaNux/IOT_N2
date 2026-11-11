@@ -522,14 +522,24 @@ void tarefaRede(void*) {
     }
 
     bool redeOk = WiFi.status() == WL_CONNECTED && !wifiDesligadoTeste;
+    static bool avisouRelogio = false;
+    if (!avisouRelogio && relogioOk()) {
+      avisouRelogio = true;
+      time_t t = time(nullptr); struct tm tm; localtime_r(&t, &tm);
+      Serial.printf(">> Wi-Fi ok e relogio sincronizado por NTP: %02d/%02d/%04d %02d:%02d\n",
+                    tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900, tm.tm_hour, tm.tm_min);
+    }
 
-    if (redeOk && !mqtt.connected() && agora >= proxTentativa) {
+    // TLS confere a validade do certificado pela data: só conecta depois do NTP acertar o relógio
+    if (redeOk && !mqtt.connected() && relogioOk() && agora >= proxTentativa) {
       Serial.println(">> conectando ao broker MQTT (TLS 8883)...");
       if (conectarMqtt()) {
-        Serial.println(">> MQTT conectado");
+        Serial.println(">> MQTT conectado (certificado do broker conferido)");
         espera = 1000;
       } else {
-        Serial.printf(">> MQTT falhou (rc=%d); nova tentativa em %lus\n", mqtt.state(), espera / 1000);
+        char erroTls[96] = "";
+        tlsMqtt.lastError(erroTls, sizeof(erroTls));
+        Serial.printf(">> MQTT falhou (rc=%d, tls: %s); nova tentativa em %lus\n", mqtt.state(), erroTls, espera / 1000);
         proxTentativa = agora + espera;
         espera = min(espera * 2, 60000UL);   // espera crescente: 1, 2, 4... até 60 s
       }
