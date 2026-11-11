@@ -497,9 +497,6 @@ void publicarTelemetria() {
 void tarefaRede(void*) {
   uint64_t mac = ESP.getEfuseMac();
   snprintf(clientId, sizeof(clientId), "ninho-%04x%08x", (uint16_t)(mac >> 32), (uint32_t)mac);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_SENHA, 6);
-  Serial.println(">> conectando ao Wi-Fi " WIFI_SSID "...");
   tlsMqtt.setCACert(CA_BUNDLE);       // confere o certificado do broker (sem setInsecure)
   mqtt.setServer(MQTT_HOST, MQTT_PORTA);
   mqtt.setCallback(aoReceber);
@@ -618,6 +615,9 @@ void setup() {
 
   Serial.printf("Ninho iniciado · dia %d · alvo %.1f °C\n", diaCiclo, alvo);
   Serial.println("Comandos: s silenciar · v virar · f falha · d +1 dia · r reiniciar · a37.8 alvo · w sem internet");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_SENHA, 6);   // Wi-Fi iniciado no setup; a tarefa de rede cuida da reconexão
+  Serial.println(">> conectando ao Wi-Fi " WIFI_SSID "...");
   xTaskCreatePinnedToCore(tarefaRede, "rede", 12288, nullptr, 1, nullptr, 0);
 }
 
