@@ -458,25 +458,36 @@ bool enviarLote() {
   }
   String corpo; serializeJson(doc, corpo);
 
-  WiFiClientSecure tls;
-  tls.setCACert(CA_BUNDLE);           // confere o certificado do Worker (sem setInsecure)
-  HTTPClient http;
-  http.setTimeout(8000);
-  if (!http.begin(tls, String(WORKER_URL) + "/api/leituras")) return false;
+  // Conexão HTTPS persistente (keep-alive): o aperto de mão TLS, conferindo o
+  // certificado, é a parte cara (~14 s no ESP32 simulado). Reaproveitando a
+  // mesma conexão, só o primeiro envio paga esse custo.
+  static WiFiClientSecure tls;
+  static HTTPClient http;
+  static bool pronto = false;
+  if (!pronto) {
+    tls.setCACert(CA_BUNDLE);         // confere o certificado do Worker (sem setInsecure)
+    http.setReuse(true);
+    http.setTimeout(8000);
+    if (!http.begin(tls, String(WORKER_URL) + "/api/leituras")) return false;
+    pronto = true;
+  }
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", String("Bearer ") + DEVICE_TOKEN);
+  uint32_t t0 = millis();
   int code = http.POST(corpo);
-  http.end();
+  uint32_t dt = millis() - t0;
+  if (code > 0) http.getString();     // consome a resposta para a conexão poder ser reusada
+  if (code <= 0) { http.end(); pronto = false; }   // conexão perdida: recomeça do zero
   if (code == 200) {
     bufIni = (bufIni + n) % BUFFER_MAX;
     bufQtd -= n;
-    Serial.printf(">> historico: %d leitura(s) gravada(s) no Worker (restam %d no buffer)\n", n, bufQtd);
+    Serial.printf(">> historico: %d leitura(s) gravada(s) no Worker em %lu ms (restam %d no buffer)\n", n, (unsigned long)dt, bufQtd);
     return true;
   }
   char erroTls[96] = "";
   tls.lastError(erroTls, sizeof(erroTls));
-  Serial.printf(">> historico: falha HTTP %d (tls: %s; heap livre %u) — mantidas %d no buffer\n",
-                code, erroTls, (unsigned)ESP.getFreeHeap(), bufQtd);
+  Serial.printf(">> historico: falha HTTP %d em %lu ms (tls: %s; heap livre %u) — mantidas %d no buffer\n",
+                code, (unsigned long)dt, erroTls, (unsigned)ESP.getFreeHeap(), bufQtd);
   return false;
 }
 
