@@ -24,9 +24,9 @@ Trabalho N2 de IoT (AMF · Sistemas de Informação · Prof. Leonam V. Hemann ·
 | Camada | O que tem |
 |---|---|
 | Dispositivo | ESP32 (Wokwi), DHT22, relé, servo, buzzer, LED. Controle na borda, estado seguro, buffer, NVS. |
-| Rede | Wi-Fi · MQTT com TLS 8883 no `broker.hivemq.com` · HTTPS para o Worker · NTP · HMAC nas mensagens |
+| Rede | Wi-Fi · MQTT com TLS 8886 no `test.mosquitto.org` · HTTPS (keep-alive) para o Worker · NTP · HMAC nas mensagens |
 | Nuvem | Cloudflare Worker `ninho` (Free) · D1 (histórico) · KV (último estado) · cron de retenção (180 dias) |
-| Interface | Painel servido pelo Worker em `/` · WebSocket WSS 8884 · gráfico · resumo SQL · comandos com ack |
+| Interface | Painel servido pelo Worker em `/` · WebSocket WSS 8081 · gráfico · resumo SQL · comandos com ack |
 
 ### Tópicos MQTT
 
@@ -40,7 +40,7 @@ Trabalho N2 de IoT (AMF · Sistemas de Informação · Prof. Leonam V. Hemann ·
 
 ### Segurança
 
-- TLS em tudo (8883, 8884, HTTPS) e **certificado conferido** com `setCACert` (sem `setInsecure`).
+- TLS em tudo (MQTT 8886, WSS 8081, HTTPS) e **certificado conferido** com `setCACert` (sem `setInsecure`).
 - Broker público → comandos assinados com **HMAC-SHA256**; o ESP32 recusa assinatura errada, comando velho (>120 s) e repetido, e valida a faixa do valor.
 - Worker: gravação só com `DEVICE_TOKEN`, leitura só com `PAINEL_KEY`.
 - Nenhum segredo no repositório: `firmware/secrets.h` está no `.gitignore`.
@@ -69,7 +69,8 @@ Com o Wrangler: `npx wrangler d1 execute ninho-historico --remote --file=worker/
 1. Projeto ESP32 novo em [wokwi.com](https://wokwi.com).
 2. Copie `sketch.ino`, `diagram.json`, `libraries.txt` e `certs.h`.
 3. Crie a aba `secrets.h` a partir de `secrets.example.h`, com a URL do Worker, o `DEVICE_TOKEN` e a `PAINEL_KEY`.
-4. Rode. O Serial mostra Wi-Fi → NTP → MQTT conectado → leituras gravadas no Worker.
+4. Entre na sua conta do Wokwi (sem login o gateway de internet do Wokwi recusa a conexão) e **não salve** o projeto com as chaves (projeto free é público).
+5. Rode. O Serial mostra Wi-Fi → NTP → MQTT conectado → leituras gravadas no Worker.
 
 | Componente | GPIO |
 |---|---|
@@ -94,6 +95,10 @@ Pelo Serial Monitor: `s` silenciar · `v` virar · `f` falha do sensor · `d` +1
 | Superaquecimento | DHT22 em 40 °C | alarme e aquecedor desligado na hora | `docs/prints/03` |
 | Falha do sensor | comando `f` | `FALHA_SENSOR`, aquecedor OFF | `docs/prints/04` |
 | Valor inválido | `a42` | `REJEITADO` | `docs/prints/05` |
-| Sem internet | comando `w`, esperar, `w` de novo | controle segue; buffer reenviado sem duplicar | — |
-| Comando falso | publicar no tópico sem a chave | `COMANDO RECUSADO (assinatura invalida)` | — |
+| Sem internet | comando `w`, esperar, `w` de novo | controle segue; buffer reenviado sem duplicar | `docs/prints/10` |
+| Comando falso / velho / repetido | publicar no tópico sem a chave, com `ts` antigo, ou o mesmo comando 2× | `COMANDO RECUSADO` (assinatura invalida / expirado / repetido) | `docs/prints/11` |
 | Worker | `POST /api/leituras` sem token | `401` | — |
+| Painel | comando pelo painel; `f` no Serial | "executado" com ack; alerta `falha_sensor` | `docs/prints/06`–`09` |
+
+> No Wokwi, a aba da simulação precisa ficar **visível**: em segundo plano o Chrome congela a simulação e o ESP32 cai do broker (LWT "offline").
+> O primeiro envio HTTPS ao Worker leva ~14 s (aperto de mão TLS conferindo o certificado no ESP32 simulado); com a conexão reaproveitada, os seguintes levam ~0,7 s.
