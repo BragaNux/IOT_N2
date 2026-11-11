@@ -1,0 +1,24 @@
+flowchart LR
+  subgraph D["1 · Dispositivo (ESP32 no Wokwi)"]
+    S["DHT22<br/>temp + umidade"] --> C{"Controle na borda<br/>histerese 37,3–37,7 °C<br/>corte em 39,5 °C"}
+    C --> R["Relé → aquecedor"]
+    C --> V["Servo → virador"]
+    C --> A["Buzzer + LED<br/>alarme"]
+    C -.-> B[("Buffer 6 h<br/>sem internet")]
+  end
+  subgraph N["2 · Rede"]
+    M(["broker.hivemq.com<br/>MQTT TLS 8883 / WSS 8884"])
+    H(["HTTPS + token"])
+  end
+  subgraph Q["3 · Nuvem (Cloudflare Free)"]
+    W["Worker ninho"] --> DB[("D1<br/>histórico")]
+    W --> KV[("KV<br/>último estado")]
+    CR["Cron diário<br/>retenção 180 dias"] --> DB
+  end
+  subgraph I["4 · Interface"]
+    P["Painel web<br/>tempo real + gráfico<br/>resumo + comandos"]
+  end
+  C <-- "telemetria · alerta · ack<br/>comando assinado (HMAC)" --> M
+  B -- "lote de leituras" --> H --> W
+  M <-- "WebSocket" --> P
+  W -- "GET /api (chave)" --> P
