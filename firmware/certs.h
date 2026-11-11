@@ -1,8 +1,28 @@
 // Certificados raiz (públicos) usados para conferir os servidores — NÃO são segredos.
 // ISRG Root X1/X2: Let's Encrypt (test.mosquitto.org:8886).
-// GTS Root R1/R4: Google Trust Services (Cloudflare *.workers.dev).
+// GTS Root R1/R4: Google Trust Services (reserva, caso a Cloudflare troque de emissora).
+// YE1 + ISRG Root X1/X2: Let's Encrypt (*.workers.dev).
 #pragma once
 static const char CA_BUNDLE[] =
+// Let's Encrypt YE1 (intermediário que assina *.workers.dev, válido até 2028).
+// Confiar nele direto evita conferir 3 assinaturas ECDSA P-384 em cadeia, lentas
+// demais no ESP32 simulado (a Cloudflare fechava o handshake antes do fim).
+"-----BEGIN CERTIFICATE-----\n"
+"MIICizCCAhGgAwIBAgIQXd1w3TH4AchcGGp6BLgK/jAKBggqhkjOPQQDAzAuMQsw\n"
+"CQYDVQQGEwJVUzENMAsGA1UEChMESVNSRzEQMA4GA1UEAxMHUm9vdCBZRTAeFw0y\n"
+"NTA5MDMwMDAwMDBaFw0yODA5MDIyMzU5NTlaMDMxCzAJBgNVBAYTAlVTMRYwFAYD\n"
+"VQQKEw1MZXQncyBFbmNyeXB0MQwwCgYDVQQDEwNZRTEwdjAQBgcqhkjOPQIBBgUr\n"
+"gQQAIgNiAAQHZVB1/mimla2hfSurylScjPMZaOJXLz/NnAc2sylm8WDyhU9Ccp+z\n"
+"ASQi5vSwGGJjSGklkD9fdPR8GpyDIOIjCEfrnbt/v+ZSEPLLEGbaM6EccDbN7p9x\n"
+"teIm2Avf+ryjge4wgeswDgYDVR0PAQH/BAQDAgGGMBMGA1UdJQQMMAoGCCsGAQUF\n"
+"BwMBMBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFLsgykcL/tflnPmPCSqj\n"
+"jDdFsbzYMB8GA1UdIwQYMBaAFKPIJlqOoUzQNWP8myPIOq5W809WMDIGCCsGAQUF\n"
+"BwEBBCYwJDAiBggrBgEFBQcwAoYWaHR0cDovL3llLmkubGVuY3Iub3JnLzATBgNV\n"
+"HSAEDDAKMAgGBmeBDAECATAnBgNVHR8EIDAeMBygGqAYhhZodHRwOi8veWUuYy5s\n"
+"ZW5jci5vcmcvMAoGCCqGSM49BAMDA2gAMGUCMQDgjUEahFT/h3DRakqiPZpLvPgf\n"
+"Zwkt6K2EOMmh1nvEzl83eMLYcod4GCl3b0J1Nn0CMBNYmEQJb4CEG5WoOe7aRn/L\n"
+"VKu6saHmHEynI7ysIPd8zQsK1HdmhlHKlw9Z5GpGvA==\n"
+"-----END CERTIFICATE-----\n"
 // ISRG Root X1
 "-----BEGIN CERTIFICATE-----\n"
 "MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw\n"
