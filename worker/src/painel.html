@@ -130,7 +130,7 @@
 
 <script>
 const BASE = "sis1a/ninho/chocadeira1/";
-const BROKER = "wss://broker.hivemq.com:8884/mqtt";   // broker público, WebSocket com TLS
+const BROKER = "wss://test.mosquitto.org:8081/mqtt";  // broker público, WebSocket com TLS (Let's Encrypt)
 const TIMEOUT_ACK_MS = 10000;
 const COOLDOWN_TOAST_MS = 60000;
 let CHAVE = sessionStorage.getItem("ninho_chave") || "";

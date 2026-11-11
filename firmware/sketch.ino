@@ -4,7 +4,7 @@
 
   Arquitetura do firmware
   - loop() (núcleo 1): SENTIR → DECIDIR → AGIR. Não depende da rede.
-  - tarefaRede (núcleo 0): Wi-Fi, NTP, MQTT com TLS (8883) e HTTPS para o Worker.
+  - tarefaRede (núcleo 0): Wi-Fi, NTP, MQTT com TLS (test.mosquitto.org:8886) e HTTPS para o Worker.
     Se a internet cair, o controle continua e as leituras ficam num buffer de 6 h.
 
   Pinos: DHT22=15 · Relé (aquecedor)=26 · Servo (virador)=13 · Buzzer=23 · LED alarme=4
@@ -68,8 +68,14 @@ const unsigned long SILENCIO_MS = 10UL * 60 * 1000;
 const int FALHAS_MAX = 3;
 
 // ---------------- Rede ----------------
-const char* MQTT_HOST = "broker.hivemq.com";   // broker público e gratuito, com TLS
-const int   MQTT_PORTA = 8883;
+// Broker público e gratuito com TLS (certificado Let's Encrypt → raiz ISRG Root X1 em certs.h).
+// test.mosquitto.org:8887 tem certificado VENCIDO de propósito: use para provar que o ESP32 recusa servidor inválido.
+#ifndef MQTT_HOST
+#define MQTT_HOST  "test.mosquitto.org"
+#endif
+#ifndef MQTT_PORTA
+#define MQTT_PORTA 8886
+#endif
 const char* DISPOSITIVO = "chocadeira1";
 #define TOPICO(sufixo) "sis1a/ninho/chocadeira1/" sufixo
 const unsigned long TELEMETRIA_MS = 30UL * 1000;
@@ -538,7 +544,7 @@ void tarefaRede(void*) {
 
     // TLS confere a validade do certificado pela data: só conecta depois do NTP acertar o relógio
     if (redeOk && !mqtt.connected() && relogioOk() && agora >= proxTentativa) {
-      Serial.println(">> conectando ao broker MQTT (TLS 8883)...");
+      Serial.printf(">> conectando ao broker MQTT %s:%d (TLS)...\n", MQTT_HOST, MQTT_PORTA);
       if (conectarMqtt()) {
         Serial.println(">> MQTT conectado (certificado do broker conferido)");
         espera = 1000;

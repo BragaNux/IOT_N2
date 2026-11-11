@@ -1,5 +1,5 @@
 // Certificados raiz (públicos) usados para conferir os servidores — NÃO são segredos.
-// ISRG Root X1/X2: Let's Encrypt (broker.hivemq.com).
+// ISRG Root X1/X2: Let's Encrypt (test.mosquitto.org:8886).
 // GTS Root R1/R4: Google Trust Services (Cloudflare *.workers.dev).
 #pragma once
 static const char CA_BUNDLE[] =
