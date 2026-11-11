@@ -499,7 +499,6 @@ void tarefaRede(void*) {
   snprintf(clientId, sizeof(clientId), "ninho-%04x%08x", (uint16_t)(mac >> 32), (uint32_t)mac);
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_SENHA, 6);
-  configTzTime("<-03>3", "pool.ntp.org", "time.google.com");
   tlsMqtt.setCACert(CA_BUNDLE);       // confere o certificado do broker (sem setInsecure)
   mqtt.setServer(MQTT_HOST, MQTT_PORTA);
   mqtt.setCallback(aoReceber);
@@ -522,6 +521,13 @@ void tarefaRede(void*) {
     }
 
     bool redeOk = WiFi.status() == WL_CONNECTED && !wifiDesligadoTeste;
+    // NTP só depois do Wi-Fi conectar (e de novo a cada 30 s até acertar o relógio)
+    static unsigned long ultNtp = 0;
+    if (redeOk && !relogioOk() && (ultNtp == 0 || agora - ultNtp > 30000)) {
+      ultNtp = agora;
+      configTzTime("<-03>3", "pool.ntp.org", "time.google.com", "time.cloudflare.com");
+      Serial.println(">> Wi-Fi conectado; sincronizando o relogio (NTP)...");
+    }
     static bool avisouRelogio = false;
     if (!avisouRelogio && relogioOk()) {
       avisouRelogio = true;
