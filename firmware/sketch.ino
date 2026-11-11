@@ -3,8 +3,8 @@
   Brayan Martins · Mell Campos
 
   Arquitetura do firmware
-  - loop() (núcleo 1): SENTIR → DECIDIR → AGIR. Não depende da rede.
-  - tarefaRede (núcleo 0): Wi-Fi, NTP, MQTT com TLS (test.mosquitto.org:8886) e HTTPS para o Worker.
+  - loop(): SENTIR → DECIDIR → AGIR. Não depende da rede.
+  - tarefaRede (tarefa separada do FreeRTOS): Wi-Fi, NTP, MQTT com TLS (test.mosquitto.org:8886) e HTTPS para o Worker.
     Se a internet cair, o controle continua e as leituras ficam num buffer de 6 h.
 
   Pinos: DHT22=15 · Relé (aquecedor)=26 · Servo (virador)=13 · Buzzer=23 · LED alarme=4
@@ -608,9 +608,6 @@ void setup() {
 
   setenv("TZ", "<-03>3", 1);   // fuso de Brasília desde o boot (o relógio sobrevive a um reset)
   tzset();
-  // O handshake TLS (MQTT/HTTPS) é demorado e roda no núcleo 0; sem isso o watchdog do
-  // IDLE0 reinicia o ESP32 no meio do handshake. O controle segue no núcleo 1.
-  disableCore0WDT();
 
   mtx = xSemaphoreCreateMutex();
   filaComandos = xQueueCreate(8, sizeof(Comando));
@@ -630,7 +627,10 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_SENHA, 6);   // Wi-Fi iniciado no setup; a tarefa de rede cuida da reconexão
   Serial.println(">> conectando ao Wi-Fi " WIFI_SSID "...");
-  xTaskCreatePinnedToCore(tarefaRede, "rede", 12288, nullptr, 1, nullptr, 0);
+  // Rede no núcleo 1, com a mesma prioridade do loop(): o FreeRTOS reveza as duas tarefas,
+  // então o controle continua rodando mesmo durante um handshake TLS demorado. (No núcleo 0
+  // o handshake segurava a CPU e o watchdog do IDLE0 reiniciava o ESP32.)
+  xTaskCreatePinnedToCore(tarefaRede, "rede", 12288, nullptr, 1, nullptr, 1);
 }
 
 void loop() {
