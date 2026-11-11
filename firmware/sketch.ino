@@ -473,7 +473,10 @@ bool enviarLote() {
     Serial.printf(">> historico: %d leitura(s) gravada(s) no Worker (restam %d no buffer)\n", n, bufQtd);
     return true;
   }
-  Serial.printf(">> historico: falha HTTP %d (mantidas %d no buffer)\n", code, bufQtd);
+  char erroTls[96] = "";
+  tls.lastError(erroTls, sizeof(erroTls));
+  Serial.printf(">> historico: falha HTTP %d (tls: %s; heap livre %u) — mantidas %d no buffer\n",
+                code, erroTls, (unsigned)ESP.getFreeHeap(), bufQtd);
   return false;
 }
 
