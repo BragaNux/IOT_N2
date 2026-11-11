@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ninho · Painel da chocadeira</title>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root{--bg:#f7f3ec;--card:#fffdf9;--ink:#2b2420;--mute:#857a70;--line:#e8dfd2;--amber:#c56a0a;--amber-soft:#fbead2;
+        --ok:#2f7d4a;--ok-soft:#e1f1e6;--bad:#b42318;--bad-soft:#fde4e1;--blue:#2453a6}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+  header{display:flex;align-items:center;gap:14px;padding:14px 22px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
+  header h1{font-size:18px;margin:0;letter-spacing:.2px}
+  header h1 span{color:var(--amber)}
+  .pill{font-size:12px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);color:var(--mute);white-space:nowrap}
+  .pill.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+  .pill.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+  .pill.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}
+  .grow{flex:1}
+  main{max-width:1180px;margin:0 auto;padding:20px 22px 40px;display:grid;gap:16px;grid-template-columns:repeat(12,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  .card h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--mute);margin:0 0 10px}
+  .kpis{grid-column:span 12;display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+  .kpi .v{font-size:28px;font-weight:650;font-variant-numeric:tabular-nums}
+  .kpi .s{font-size:12px;color:var(--mute)}
+  .kpi.alarme{background:var(--bad-soft);border-color:#f3b5ad}
+  .kpi.alarme .v{color:var(--bad)}
+  .grafico{grid-column:span 8}
+  .lado{grid-column:span 4;display:grid;gap:16px;align-content:start}
+  .resumo{grid-column:span 7}
+  .alertas{grid-column:span 5}
+  canvas{width:100%!important;height:290px!important}
+  label{font-size:13px;color:var(--mute)}
+  input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;width:100%}
+  button{font:inherit;font-weight:600;padding:9px 14px;border-radius:9px;border:1px solid var(--amber);background:var(--amber);color:#fff;cursor:pointer}
+  button.sec{background:#fff;color:var(--amber)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .linha{display:flex;gap:8px;align-items:end;margin-bottom:10px}
+  .linha > div{flex:1}
+  table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+  th,td{text-align:right;padding:6px 6px;border-bottom:1px solid var(--line)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--mute);font-weight:600}
+  td.fora{color:var(--bad);font-weight:650}
+  .log{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;font-size:13px}
+  .log li{padding:7px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:baseline}
+  .log time{color:var(--mute);font-variant-numeric:tabular-nums;min-width:62px}
+  .tag{font-size:11px;font-weight:700;padding:1px 7px;border-radius:6px}
+  .tag.p{background:var(--amber-soft);color:var(--amber)} .tag.ok{background:var(--ok-soft);color:var(--ok)} .tag.bad{background:var(--bad-soft);color:var(--bad)}
+  #login{position:fixed;inset:0;background:rgba(43,36,32,.55);display:flex;align-items:center;justify-content:center;z-index:10}
+  #login .card{width:min(420px,92vw)}
+  #toast{position:fixed;right:18px;bottom:18px;display:grid;gap:8px;z-index:20}
+  #toast div{background:var(--bad);color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:340px}
+  .muted{color:var(--mute);font-size:12px}
+  @media (max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.grafico,.lado,.resumo,.alertas{grid-column:span 12}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🥚 <span>Ninho</span> · chocadeira1</h1>
+  <span id="pDisp" class="pill">dispositivo: ?</span>
+  <span id="pMqtt" class="pill">tempo real: desconectado</span>
+  <span class="grow"></span>
+  <span id="pAtual" class="muted"></span>
+  <button class="sec" onclick="sair()">Sair</button>
+</header>
+
+<main>
+  <section class="kpis">
+    <div class="card kpi" id="kTemp"><h2>Temperatura</h2><div class="v" id="vTemp">—</div><div class="s">alvo <b id="vAlvo">—</b> · faixa 36,5–38,5 °C</div></div>
+    <div class="card kpi"><h2>Umidade</h2><div class="v" id="vUmid">—</div><div class="s">ideal 50–55 % (65–70 % no fim)</div></div>
+    <div class="card kpi"><h2>Aquecedor</h2><div class="v" id="vAquec">—</div><div class="s">relé no GPIO 26</div></div>
+    <div class="card kpi" id="kEstado"><h2>Estado</h2><div class="v" id="vEstado" style="font-size:20px">—</div><div class="s" id="vSil"> </div></div>
+    <div class="card kpi"><h2>Dia do ciclo</h2><div class="v" id="vDia">—</div><div class="s">de 21 · viragem para no 19</div></div>
+    <div class="card kpi"><h2>Mensagem</h2><div class="v" id="vSig" style="font-size:18px">—</div><div class="s" id="vBuf">assinatura HMAC</div></div>
+  </section>
+
+  <section class="card grafico">
+    <h2>Temperatura · últimas 6 h (histórico D1 + tempo real)</h2>
+    <canvas id="graf"></canvas>
+  </section>
+
+  <section class="lado">
+    <div class="card">
+      <h2>Comandos</h2>
+      <div class="linha">
+        <div><label for="iAlvo">Temperatura alvo (36,5–38,5 °C)</label><input id="iAlvo" type="number" step="0.1" value="37.5"></div>
+        <button onclick="enviar('alvo', document.getElementById('iAlvo').value)">Enviar</button>
+      </div>
+      <div class="linha">
+        <div><label for="iDia">Dia do ciclo (1–21)</label><input id="iDia" type="number" min="1" max="21" value="1"></div>
+        <button onclick="enviar('dia', document.getElementById('iDia').value)">Ajustar</button>
+      </div>
+      <div class="linha">
+        <button class="sec" style="flex:1" onclick="enviar('silenciar','')">Silenciar 10 min</button>
+        <button class="sec" style="flex:1" onclick="enviar('virar','')">Virar ovos agora</button>
+      </div>
+      <p class="muted">"Executado" só aparece quando o ESP32 devolve o ack assinado. Sem resposta em 10 s = ESP32 offline ou comando perdido.</p>
+    </div>
+    <div class="card">
+      <h2>Comandos enviados</h2>
+      <ul class="log" id="logCmd"><li class="muted">nenhum ainda</li></ul>
+    </div>
+  </section>
+
+  <section class="card resumo">
+    <h2>Resumo por hora · últimas 24 h (consulta SQL no D1)</h2>
+    <table><thead><tr><th>Hora</th><th>Mín</th><th>Máx</th><th>Média</th><th>Umid.</th><th>Min. fora</th><th>Aquecedor</th></tr></thead>
+      <tbody id="tbResumo"><tr><td colspan="7" class="muted">carregando…</td></tr></tbody></table>
+  </section>
+
+  <section class="card alertas">
+    <h2>Alertas (cooldown no ESP32)</h2>
+    <ul class="log" id="logAlerta"><li class="muted">nenhum alerta</li></ul>
+  </section>
+</main>
+
+<div id="login">
+  <form class="card" onsubmit="entrar(event)">
+    <h2>Entrar no painel</h2>
+    <p class="muted">Digite a chave do painel (PAINEL_KEY). Ela fica só nesta aba e serve para ler o histórico e assinar os comandos.</p>
+    <input id="iChave" type="password" autocomplete="current-password" placeholder="chave do painel" required>
+    <p id="loginErro" class="muted" style="color:var(--bad)"></p>
+    <button type="submit" style="width:100%">Entrar</button>
+  </form>
+</div>
+<div id="toast"></div>
+
+<script>
+const BASE = "sis1a/ninho/chocadeira1/";
+const BROKER = "wss://broker.hivemq.com:8884/mqtt";   // broker público, WebSocket com TLS
+const TIMEOUT_ACK_MS = 10000;
+const COOLDOWN_TOAST_MS = 60000;
+let CHAVE = sessionStorage.getItem("ninho_chave") || "";
+let chaveCripto = null, cliente = null, grafico = null;
+const pendentes = new Map();
+const ultimoToast = {};
+let ultimaTelemetria = 0, dispOnline = null;
+
+const $ = id => document.getElementById(id);
+const hora = ts => new Date(ts * 1000).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const fmt = (v, d = 1) => (v === null || v === undefined || Number.isNaN(v)) ? "—" : Number(v).toFixed(d).replace(".", ",");
+
+async function prepararChave() {
+  chaveCripto = await crypto.subtle.importKey("raw", new TextEncoder().encode(CHAVE), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+}
+async function hmac(msg) {
+  const sig = await crypto.subtle.sign("HMAC", chaveCripto, new TextEncoder().encode(msg));
+  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+async function api(caminho) {
+  const r = await fetch(caminho, { headers: { authorization: "Bearer " + CHAVE } });
+  if (r.status === 401) throw new Error("chave inválida");
+  return r.json();
+}
+
+async function entrar(ev) {
+  ev && ev.preventDefault();
+  CHAVE = CHAVE || $("iChave").value.trim();
+  try {
+    await api("/api/estado?d=chocadeira1");
+  } catch (e) {
+    $("loginErro").textContent = "Chave recusada pelo Worker.";
+    CHAVE = ""; sessionStorage.removeItem("ninho_chave");
+    return;
+  }
+  sessionStorage.setItem("ninho_chave", CHAVE);
+  $("login").style.display = "none";
+  await prepararChave();
+  iniciar();
+}
+function sair() { sessionStorage.removeItem("ninho_chave"); location.reload(); }
+
+async function iniciar() {
+  montarGrafico();
+  await Promise.all([carregarEstado(), carregarHistorico(), carregarResumo()]);
+  setInterval(carregarResumo, 60000);
+  setInterval(atualizarFrescor, 2000);
+  conectarMqtt();
+}
+
+async function carregarEstado() {
+  const e = await api("/api/estado?d=chocadeira1");
+  if (e) mostrar({ ts: e.ts, temp_c: e.temp_c, umid_pct: e.umid_pct, aquecedor: !!e.aquecedor, estado: e.estado, dia: e.dia }, "histórico");
+}
+async function carregarHistorico() {
+  const linhas = await api("/api/leituras?d=chocadeira1&horas=6");
+  grafico.data.datasets[0].data = linhas.filter(l => l.temp_c !== null).map(l => ({ x: l.ts * 1000, y: l.temp_c }));
+  grafico.update();
+}
+async function carregarResumo() {
+  const linhas = await api("/api/resumo?d=chocadeira1&horas=24");
+  $("tbResumo").innerHTML = linhas.length ? linhas.map(l => `<tr>
+      <td>${l.hora.slice(5).replace("-", "/")}</td><td>${fmt(l.temp_min)}</td><td>${fmt(l.temp_max)}</td><td>${fmt(l.temp_media, 2)}</td>
+      <td>${fmt(l.umid_media, 0)}%</td><td class="${l.minutos_fora > 0 ? "fora" : ""}">${l.minutos_fora}</td><td>${fmt(l.pct_aquecedor, 0)}%</td></tr>`).join("")
+    : `<tr><td colspan="7" class="muted">sem leituras nas últimas 24 h</td></tr>`;
+}
+
+function montarGrafico() {
+  const agora = Date.now();
+  grafico = new Chart($("graf"), {
+    type: "line",
+    data: { datasets: [
+      { label: "temp (°C)", data: [], borderColor: "#c56a0a", backgroundColor: "#c56a0a", pointRadius: 0, borderWidth: 2, tension: .25 },
+      { label: "mín 36,5", data: [], borderColor: "#b42318", borderDash: [6, 5], pointRadius: 0, borderWidth: 1 },
+      { label: "máx 38,5", data: [], borderColor: "#b42318", borderDash: [6, 5], pointRadius: 0, borderWidth: 1 },
+    ] },
+    options: { animation: false, maintainAspectRatio: false, parsing: false,
+      scales: { x: { type: "linear", ticks: { callback: v => new Date(v).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) } },
+                y: { suggestedMin: 35.5, suggestedMax: 40 } },
+      plugins: { legend: { labels: { boxWidth: 12 } } } }
+  });
+  atualizarLimites();
+}
+function atualizarLimites() {
+  const d = grafico.data.datasets[0].data;
+  const x0 = d.length ? d[0].x : Date.now() - 6 * 3600e3, x1 = Date.now();
+  grafico.data.datasets[1].data = [{ x: x0, y: 36.5 }, { x: x1, y: 36.5 }];
+  grafico.data.datasets[2].data = [{ x: x0, y: 38.5 }, { x: x1, y: 38.5 }];
+}
+
+function mostrar(t, origem, assinaturaOk) {
+  $("vTemp").textContent = t.temp_c == null ? "sem leitura" : fmt(t.temp_c) + " °C";
+  $("vUmid").textContent = t.umid_pct == null ? "—" : fmt(t.umid_pct, 0) + " %";
+  $("vAquec").textContent = t.aquecedor ? "ligado 🔥" : "desligado";
+  $("vEstado").textContent = t.estado || "—";
+  $("vDia").textContent = t.dia ?? "—";
+  if (t.alvo_c != null) $("vAlvo").textContent = fmt(t.alvo_c) + " °C";
+  $("vSil").textContent = t.silenciado ? "buzzer silenciado" : " ";
+  const alarme = t.alarme || ["SUPERAQUECIDO", "ALARME_TEMP", "FALHA_SENSOR"].includes(t.estado);
+  $("kTemp").classList.toggle("alarme", !!alarme);
+  $("kEstado").classList.toggle("alarme", !!alarme);
+  if (assinaturaOk !== undefined) {
+    $("vSig").textContent = assinaturaOk ? "autêntica ✓" : "assinatura inválida ✗";
+    $("vSig").style.color = assinaturaOk ? "var(--ok)" : "var(--bad)";
+  }
+  if (t.buffer !== undefined) $("vBuf").textContent = t.buffer > 0 ? `${t.buffer} leitura(s) aguardando envio` : "assinatura HMAC · buffer vazio";
+  $("pAtual").textContent = `atualizado ${hora(t.ts)} (${origem})`;
+}
+
+function atualizarFrescor() {
+  const p = $("pDisp");
+  const recente = Date.now() - ultimaTelemetria < 75000;
+  if (dispOnline === false) { p.className = "pill bad"; p.textContent = "ESP32 offline (LWT)"; }
+  else if (recente) { p.className = "pill ok"; p.textContent = "ESP32 online"; }
+  else if (dispOnline) { p.className = "pill warn"; p.textContent = "ESP32 sem telemetria recente"; }
+  else { p.className = "pill"; p.textContent = "dispositivo: aguardando"; }
+  for (const [id, c] of pendentes) {
+    if (Date.now() - c.enviado > TIMEOUT_ACK_MS) { pendentes.delete(id); marcar(id, "bad", "sem resposta em 10 s (ESP32 offline?)"); }
+  }
+}
+
+function conectarMqtt() {
+  const id = "ninho-painel-" + Math.random().toString(16).slice(2, 8);
+  cliente = mqtt.connect(BROKER, { clientId: id, clean: true, reconnectPeriod: 3000, connectTimeout: 8000 });
+  const pm = $("pMqtt");
+  cliente.on("connect", () => {
+    pm.className = "pill ok"; pm.textContent = "tempo real: WebSocket TLS";
+    cliente.subscribe([BASE + "telemetria", BASE + "estado", BASE + "alerta", BASE + "ack"], { qos: 1 });
+  });
+  cliente.on("reconnect", () => { pm.className = "pill warn"; pm.textContent = "tempo real: reconectando…"; });
+  cliente.on("close", () => { pm.className = "pill bad"; pm.textContent = "tempo real: desconectado"; });
+  cliente.on("message", async (topico, payload) => {
+    let m; try { m = JSON.parse(payload.toString()); } catch { return; }
+    const sub = topico.slice(BASE.length);
+    if (sub === "estado") { dispOnline = !!m.online; atualizarFrescor(); return; }
+    if (sub === "telemetria") {
+      const msg = `${m.ts}|${m.temp_c == null ? "null" : Number(m.temp_c).toFixed(1)}|${m.aquecedor ? 1 : 0}|${m.estado}`;
+      const ok = m.sig === await hmac(msg);
+      mostrar(m, "tempo real", ok);
+      if (!ok) return;            // telemetria forjada não entra no gráfico
+      ultimaTelemetria = Date.now(); dispOnline = true;
+      if (m.temp_c != null) { grafico.data.datasets[0].data.push({ x: m.ts * 1000, y: m.temp_c }); atualizarLimites(); grafico.update(); }
+      if (m.alvo_c != null) $("iAlvo").placeholder = m.alvo_c;
+    }
+    if (sub === "alerta") {
+      const ok = m.sig === await hmac(`${m.ts}|${m.tipo}`);
+      if (!ok) return;
+      adicionarAlerta(m);
+    }
+    if (sub === "ack") {
+      const ok = m.sig === await hmac(`${m.id}|${m.ok ? 1 : 0}|${m.ts}`);
+      if (!ok || !pendentes.has(m.id)) return;
+      pendentes.delete(m.id);
+      marcar(m.id, m.ok ? "ok" : "bad", (m.ok ? "executado: " : "recusado pelo ESP32: ") + m.resultado);
+    }
+  });
+}
+
+async function enviar(cmd, valor) {
+  if (!cliente || !cliente.connected) return toast("Sem conexão com o broker.");
+  const id = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const ts = Math.floor(Date.now() / 1000);
+  valor = String(valor ?? "").trim();
+  const sig = await hmac(`${id}|${cmd}|${valor}|${ts}`);
+  cliente.publish(BASE + "comando", JSON.stringify({ id, cmd, valor, ts, sig }), { qos: 1 });
+  pendentes.set(id, { enviado: Date.now() });
+  const ul = $("logCmd");
+  if (ul.querySelector(".muted")) ul.innerHTML = "";
+  ul.insertAdjacentHTML("afterbegin", `<li id="${id}"><time>${hora(ts)}</time><span class="tag p">enviado</span><span>${cmd}${valor ? " = " + valor : ""} · aguardando ack…</span></li>`);
+}
+function marcar(id, cls, texto) {
+  const li = $(id); if (!li) return;
+  li.querySelector(".tag").className = "tag " + cls;
+  li.querySelector(".tag").textContent = cls === "ok" ? "executado" : "falhou";
+  const s = li.querySelectorAll("span")[1]; s.textContent = s.textContent.split(" · ")[0] + " · " + texto;
+}
+
+function adicionarAlerta(a) {
+  const ul = $("logAlerta");
+  if (ul.querySelector(".muted")) ul.innerHTML = "";
+  ul.insertAdjacentHTML("afterbegin", `<li><time>${hora(a.ts)}</time><span class="tag bad">${a.tipo}</span><span>${a.msg}${a.temp_c != null ? " · " + fmt(a.temp_c) + " °C" : ""}</span></li>`);
+  // cooldown também no painel: o mesmo tipo não pisca de novo antes de 1 min
+  if (!ultimoToast[a.tipo] || Date.now() - ultimoToast[a.tipo] > COOLDOWN_TOAST_MS) {
+    ultimoToast[a.tipo] = Date.now();
+    toast("⚠ " + a.msg);
+    if ("Notification" in window && Notification.permission === "granted") new Notification("Ninho: " + a.tipo, { body: a.msg });
+  }
+}
+function toast(texto) {
+  const d = document.createElement("div"); d.textContent = texto; $("toast").appendChild(d);
+  setTimeout(() => d.remove(), 6000);
+}
+
+if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+if (CHAVE) entrar();
+</script>
+</body>
+</html>

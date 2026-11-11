@@ -1,0 +1,22 @@
+name = "ninho"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ninho-historico"
+database_id = "a34c729f-8dc5-4f66-863a-781c5efa3425"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "753bf560fb11478b9cdc190903ee4f13"
+
+[triggers]
+crons = ["0 6 * * *"]   # todo dia 03:00 (Brasília): limpeza por retenção
+
+# Secrets (não ficam aqui): wrangler secret put DEVICE_TOKEN / wrangler secret put PAINEL_KEY
