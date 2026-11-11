@@ -499,13 +499,14 @@ void tarefaRede(void*) {
   snprintf(clientId, sizeof(clientId), "ninho-%04x%08x", (uint16_t)(mac >> 32), (uint32_t)mac);
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_SENHA, 6);
+  Serial.println(">> conectando ao Wi-Fi " WIFI_SSID "...");
   tlsMqtt.setCACert(CA_BUNDLE);       // confere o certificado do broker (sem setInsecure)
   mqtt.setServer(MQTT_HOST, MQTT_PORTA);
   mqtt.setCallback(aoReceber);
   mqtt.setBufferSize(512);
   mqtt.setKeepAlive(30);
 
-  unsigned long proxTentativa = 0, espera = 1000, proxWifi = 10000;
+  unsigned long proxTentativa = 0, espera = 1000, proxWifi = 30000;
   unsigned long ultTelemetria = 0, ultHistorico = 0, ultEnvio = 0;
   bool estavaOnline = false;
 
@@ -516,8 +517,10 @@ void tarefaRede(void*) {
     if (wifiDesligadoTeste) {
       if (WiFi.status() == WL_CONNECTED) { mqtt.disconnect(); WiFi.disconnect(); }
     } else if (WiFi.status() != WL_CONNECTED && agora >= proxWifi) {
+      if (proxWifi) Serial.printf(">> Wi-Fi sem conexao (status %d); tentando de novo\n", WiFi.status());
+      WiFi.disconnect();
       WiFi.begin(WIFI_SSID, WIFI_SENHA, 6);
-      proxWifi = agora + 10000;   // dá 10 s para conectar antes de tentar de novo
+      proxWifi = agora + 30000;   // dá 30 s para conectar antes de tentar de novo
     }
 
     bool redeOk = WiFi.status() == WL_CONNECTED && !wifiDesligadoTeste;
